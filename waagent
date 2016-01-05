@@ -1815,130 +1815,124 @@ class Distro(AbstractDistro):
         Online check if updated package of walinuxagent is available.
         """
         Run("pacman -Syy")
-        return Run("pacman -Qu " + p)
+        retcode = Run("pacman -Qu " + p)
+        return not bool(retcode)
 
     def deleteRootPassword(self):
         """
         Generic root password removal.
         """
-        filepath="/etc/shadow"
-        ReplaceFileContentsAtomic(filepath,"root:*LOCK*:14600::::::\n"
-                                  + "\n".join(filter(lambda a: not a.startswith("root:"),GetFileContents(filepath).split('\n'))))
-        os.chmod(filepath,self.shadow_file_mode)
-        if self.isSelinuxSystem():
-            self.setSelinuxContext(filepath,'system_u:object_r:shadow_t:s0')
-        Log("Root password deleted.")
-        return 0
+        return Run("passwd -d root")
 
-    def changePass(self,user,password):
-        Log("Change user password")
-        crypt_id = Config.get("Provisioning.PasswordCryptId")
-        if crypt_id is None:
-            crypt_id = "6"
+    # def changePass(self,user,password):
+    #     Log("Change user password")
+    #     crypt_id = Config.get("Provisioning.PasswordCryptId")
+    #     if crypt_id is None:
+    #         crypt_id = "6"
+    #
+    #     salt_len = Config.get("Provisioning.PasswordCryptSaltLength")
+    #     try:
+    #         salt_len = int(salt_len)
+    #         if salt_len < 0 or salt_len > 10:
+    #             salt_len = 10
+    #     except (ValueError, TypeError):
+    #         salt_len = 10
+    #
+    #     return self.chpasswd(user, password, crypt_id=crypt_id,
+    #                          salt_len=salt_len)
+    #
+    # def chpasswd(self, username, password, crypt_id=6, salt_len=10):
+    #     passwd_hash = self.gen_password_hash(password, crypt_id, salt_len)
+    #     cmd = "usermod -p '{0}' {1}".format(passwd_hash, username)
+    #     ret, output = RunGetOutput(cmd, log_cmd=False)
+    #     if ret != 0:
+    #         return "Failed to set password for {0}: {1}".format(username, output)
 
-        salt_len = Config.get("Provisioning.PasswordCryptSaltLength")
-        try:
-            salt_len = int(salt_len)
-            if salt_len < 0 or salt_len > 10:
-                salt_len = 10
-        except (ValueError, TypeError):
-            salt_len = 10
+    # def gen_password_hash(self, password, crypt_id, salt_len):
+    #     collection = string.ascii_letters + string.digits
+    #     salt = ''.join(random.choice(collection) for _ in range(salt_len))
+    #     salt = "${0}${1}".format(crypt_id, salt)
+    #     return crypt.crypt(password, salt)
+    #
+    # def load_ata_piix(self):
+    #     return WaAgent.TryLoadAtapiix()
+    #
+    # def unload_ata_piix(self):
+    #     """
+    #     Generic function to remove ata_piix.ko.
+    #     """
+    #     return WaAgent.TryUnloadAtapiix()
 
-        return self.chpasswd(user, password, crypt_id=crypt_id,
-                             salt_len=salt_len)
+    # def deprovisionWarnUser(self):
+    #     """
+    #     Generic user warnings used at deprovision.
+    #     """
+    #     print("WARNING! Nameserver configuration in /etc/resolv.conf will be deleted.")
+    #
+    # def deprovisionDeleteFiles(self):
+    #     """
+    #     Files to delete when VM is deprovisioned
+    #     """
+    #     for a in VarLibDhcpDirectories:
+    #         Run("rm -f " + a + "/*")
+    #
+    #     # Clear LibDir, remove nameserver and root bash history
+    #
+    #     for f in os.listdir(LibDir) + self.fileBlackList:
+    #         try:
+    #             os.remove(f)
+    #         except:
+    #             pass
+    #     return 0
+    #
+    # def uninstallDeleteFiles(self):
+    #     """
+    #     Files to delete when agent is uninstalled.
+    #     """
+    #     for f in self.agent_files_to_uninstall:
+    #         try:
+    #             os.remove(f)
+    #         except:
+    #             pass
+    #     return 0
 
-    def chpasswd(self, username, password, crypt_id=6, salt_len=10):
-        passwd_hash = self.gen_password_hash(password, crypt_id, salt_len)
-        cmd = "usermod -p '{0}' {1}".format(passwd_hash, username)
-        ret, output = RunGetOutput(cmd, log_cmd=False)
-        if ret != 0:
-            return "Failed to set password for {0}: {1}".format(username, output)
+    # def checkDependencies(self):
+    #     """
+    #     Generic dependency check.
+    #     Return 1 unless all dependencies are satisfied.
+    #     """
+    #     if self.checkPackageInstalled('NetworkManager'):
+    #         Error(GuestAgentLongName + " is not compatible with network-manager.")
+    #         return 1
+    #     try:
+    #         m= __import__('pyasn1')
+    #     except ImportError:
+    #         Error(GuestAgentLongName + " requires python-pyasn1 for your Linux distribution.")
+    #         return 1
+    #     for a in self.requiredDeps:
+    #         if Run("which " + a + " > /dev/null 2>&1",chk_err=False):
+    #             Error("Missing required dependency: " + a)
+    #             return 1
+    #     return 0
 
-    def gen_password_hash(self, password, crypt_id, salt_len):
-        collection = string.ascii_letters + string.digits
-        salt = ''.join(random.choice(collection) for _ in range(salt_len))
-        salt = "${0}${1}".format(crypt_id, salt)
-        return crypt.crypt(password, salt)
-
-    def load_ata_piix(self):
-        return WaAgent.TryLoadAtapiix()
-
-    def unload_ata_piix(self):
-        """
-        Generic function to remove ata_piix.ko.
-        """
-        return WaAgent.TryUnloadAtapiix()
-
-    def deprovisionWarnUser(self):
-        """
-        Generic user warnings used at deprovision.
-        """
-        print("WARNING! Nameserver configuration in /etc/resolv.conf will be deleted.")
-
-    def deprovisionDeleteFiles(self):
-        """
-        Files to delete when VM is deprovisioned
-        """
-        for a in VarLibDhcpDirectories:
-            Run("rm -f " + a + "/*")
-
-        # Clear LibDir, remove nameserver and root bash history
-
-        for f in os.listdir(LibDir) + self.fileBlackList:
-            try:
-                os.remove(f)
-            except:
-                pass
-        return 0
-
-    def uninstallDeleteFiles(self):
-        """
-        Files to delete when agent is uninstalled.
-        """
-        for f in self.agent_files_to_uninstall:
-            try:
-                os.remove(f)
-            except:
-                pass
-        return 0
-
-    def checkDependencies(self):
-        """
-        Generic dependency check.
-        Return 1 unless all dependencies are satisfied.
-        """
-        if self.checkPackageInstalled('NetworkManager'):
-            Error(GuestAgentLongName + " is not compatible with network-manager.")
-            return 1
-        try:
-            m= __import__('pyasn1')
-        except ImportError:
-            Error(GuestAgentLongName + " requires python-pyasn1 for your Linux distribution.")
-            return 1
-        for a in self.requiredDeps:
-            if Run("which " + a + " > /dev/null 2>&1",chk_err=False):
-                Error("Missing required dependency: " + a)
-                return 1
-        return 0
-
-    def packagedInstall(self,buildroot):
-        """
-        Called from setup.py for use by RPM.
-        Copies generated files waagent.conf, under the buildroot.
-        """
-        if not os.path.exists(buildroot+'/etc'):
-            os.mkdir(buildroot+'/etc')
-        SetFileContents(buildroot+'/etc/waagent.conf', MyDistro.waagent_conf_file)
-
-        if not os.path.exists(buildroot+'/etc/logrotate.d'):
-            os.mkdir(buildroot+'/etc/logrotate.d')
-        SetFileContents(buildroot+'/etc/logrotate.d/waagent', WaagentLogrotate)
-
-        self.init_script_file=buildroot+self.init_script_file
-        # this allows us to call installAgentServiceScriptFiles()
-        if not os.path.exists(os.path.dirname(self.init_script_file)):
-            os.mkdir(os.path.dirname(self.init_script_file))
-        self.installAgentServiceScriptFiles()
+    # def packagedInstall(self,buildroot):
+    #     """
+    #     Called from setup.py for use by RPM.
+    #     Copies generated files waagent.conf, under the buildroot.
+    #     """
+    #     if not os.path.exists(buildroot+'/etc'):
+    #         os.mkdir(buildroot+'/etc')
+    #     SetFileContents(buildroot+'/etc/waagent.conf', MyDistro.waagent_conf_file)
+    #
+    #     if not os.path.exists(buildroot+'/etc/logrotate.d'):
+    #         os.mkdir(buildroot+'/etc/logrotate.d')
+    #     SetFileContents(buildroot+'/etc/logrotate.d/waagent', WaagentLogrotate)
+    #
+    #     self.init_script_file=buildroot+self.init_script_file
+    #     # this allows us to call installAgentServiceScriptFiles()
+    #     if not os.path.exists(os.path.dirname(self.init_script_file)):
+    #         os.mkdir(os.path.dirname(self.init_script_file))
+    #     self.installAgentServiceScriptFiles()
 
     def GetIpv4Address(self):
         """
@@ -1956,226 +1950,227 @@ class Distro(AbstractDistro):
         return GetFirstActiveNetworkInterfaceNonLoopback()[0]
 
     def RestartInterface(self, iface, max_retry=3):
-        for retry in range(1, max_retry + 1):
-            ret = Run("ifdown " + iface + " && ifup " + iface)
-            if ret == 0:
-                return
-            Log("Failed to restart interface: {0}, ret={1}".format(iface, ret))
-            if retry < max_retry:
-                Log("Retry restart interface in 5 seconds")
-                time.sleep(5)
+        Run("systemctl restart systemd-networkd")
+        # for retry in range(1, max_retry + 1):
+        #     ret = Run("ifdown " + iface + " && ifup " + iface)
+        #     if ret == 0:
+        #         return
+        #     Log("Failed to restart interface: {0}, ret={1}".format(iface, ret))
+        #     if retry < max_retry:
+        #         Log("Retry restart interface in 5 seconds")
+        #         time.sleep(5)
 
-    def CreateAccount(self,user, password, expiration, thumbprint):
-        return CreateAccount(user, password, expiration, thumbprint)
+    # def CreateAccount(self,user, password, expiration, thumbprint):
+    #     return CreateAccount(user, password, expiration, thumbprint)
+    #
+    # def DeleteAccount(self,user):
+    #     return DeleteAccount(user)
 
-    def DeleteAccount(self,user):
-        return DeleteAccount(user)
+    # def ActivateResourceDisk(self):
+    #     """
+    #     Format, mount, and if specified in the configuration
+    #     set resource disk as swap.
+    #     """
+    #     global DiskActivated
+    #     format = Config.get("ResourceDisk.Format")
+    #     if format == None or format.lower().startswith("n"):
+    #         DiskActivated = True
+    #         return
+    #     device = DeviceForIdePort(1)
+    #     if device == None:
+    #         Error("ActivateResourceDisk: Unable to detect disk topology.")
+    #         return
+    #     device = "/dev/" + device
+    #
+    #     mountlist = RunGetOutput("mount")[1]
+    #     mountpoint = GetMountPoint(mountlist, device)
+    #
+    #     if(mountpoint):
+    #         Log("ActivateResourceDisk: " + device + "1 is already mounted.")
+    #     else:
+    #         mountpoint = Config.get("ResourceDisk.MountPoint")
+    #         if mountpoint == None:
+    #             mountpoint = "/mnt/resource"
+    #         CreateDir(mountpoint, "root", 0755)
+    #         fs = Config.get("ResourceDisk.Filesystem")
+    #         if fs == None:
+    #             fs = "ext3"
+    #
+    #         partition = device + "1"
+    #
+    #         #Check partition type
+    #         Log("Detect GPT...")
+    #         ret = RunGetOutput("parted {0} print".format(device))
+    #         if ret[0] == 0 and "gpt" in ret[1]:
+    #             Log("GPT detected.")
+    #             #GPT(Guid Partition Table) is used.
+    #             #Get partitions.
+    #             parts = filter(lambda x : re.match("^\s*[0-9]+", x), ret[1].split("\n"))
+    #             #If there are more than 1 partitions, remove all partitions
+    #             #and create a new one using the entire disk space.
+    #             if len(parts) > 1:
+    #                 for i in range(1, len(parts) + 1):
+    #                     Run("parted {0} rm {1}".format(device, i))
+    #                 Run("parted {0} mkpart primary 0% 100%".format(device))
+    #                 Run("mkfs." + fs + " " + partition + " -F")
+    #         else:
+    #             existingFS = RunGetOutput("sfdisk -q -c " + device + " 1", chk_err=False)[1].rstrip()
+    #             if existingFS == "7" and fs != "ntfs":
+    #                 Run("sfdisk -c " + device + " 1 83")
+    #                 Run("mkfs." + fs + " " + partition)
+    #         if Run("mount " + partition + " " + mountpoint, chk_err=False):
+    #             #If mount failed, try to format the partition and mount again
+    #             Warn("Failed to mount resource disk. Retry mounting.")
+    #             Run("mkfs." + fs + " " + partition + " -F")
+    #             if Run("mount " + partition + " " + mountpoint):
+    #                 Error("ActivateResourceDisk: Failed to mount resource disk (" + partition + ").")
+    #                 return
+    #         Log("Resource disk (" + partition + ") is mounted at " + mountpoint + " with fstype " + fs)
+    #
+    #     #Create README file under the root of resource disk
+    #     SetFileContents(os.path.join(mountpoint,README_FILENAME), README_FILECONTENT)
+    #     DiskActivated = True
+    #
+    #     #Create swap space
+    #     swap = Config.get("ResourceDisk.EnableSwap")
+    #     if swap == None or swap.lower().startswith("n"):
+    #         return
+    #     sizeKB = int(Config.get("ResourceDisk.SwapSizeMB")) * 1024
+    #     if os.path.isfile(mountpoint + "/swapfile") and os.path.getsize(mountpoint + "/swapfile") != (sizeKB * 1024):
+    #         os.remove(mountpoint + "/swapfile")
+    #     if not os.path.isfile(mountpoint + "/swapfile"):
+    #         Run("dd if=/dev/zero of=" + mountpoint + "/swapfile bs=1024 count=" + str(sizeKB))
+    #         Run("mkswap " + mountpoint + "/swapfile")
+    #     Run("chmod 600 " + mountpoint + "/swapfile")
+    #     if not Run("swapon " + mountpoint + "/swapfile"):
+    #         Log("Enabled " + str(sizeKB) + " KB of swap at " + mountpoint + "/swapfile")
+    #     else:
+    #         Error("ActivateResourceDisk: Failed to activate swap at " + mountpoint + "/swapfile")
 
-    def ActivateResourceDisk(self):
-        """
-        Format, mount, and if specified in the configuration
-        set resource disk as swap.
-        """
-        global DiskActivated
-        format = Config.get("ResourceDisk.Format")
-        if format == None or format.lower().startswith("n"):
-            DiskActivated = True
-            return
-        device = DeviceForIdePort(1)
-        if device == None:
-            Error("ActivateResourceDisk: Unable to detect disk topology.")
-            return
-        device = "/dev/" + device
-
-        mountlist = RunGetOutput("mount")[1]
-        mountpoint = GetMountPoint(mountlist, device)
-
-        if(mountpoint):
-            Log("ActivateResourceDisk: " + device + "1 is already mounted.")
-        else:
-            mountpoint = Config.get("ResourceDisk.MountPoint")
-            if mountpoint == None:
-                mountpoint = "/mnt/resource"
-            CreateDir(mountpoint, "root", 0755)
-            fs = Config.get("ResourceDisk.Filesystem")
-            if fs == None:
-                fs = "ext3"
-
-            partition = device + "1"
-
-            #Check partition type
-            Log("Detect GPT...")
-            ret = RunGetOutput("parted {0} print".format(device))
-            if ret[0] == 0 and "gpt" in ret[1]:
-                Log("GPT detected.")
-                #GPT(Guid Partition Table) is used.
-                #Get partitions.
-                parts = filter(lambda x : re.match("^\s*[0-9]+", x), ret[1].split("\n"))
-                #If there are more than 1 partitions, remove all partitions
-                #and create a new one using the entire disk space.
-                if len(parts) > 1:
-                    for i in range(1, len(parts) + 1):
-                        Run("parted {0} rm {1}".format(device, i))
-                    Run("parted {0} mkpart primary 0% 100%".format(device))
-                    Run("mkfs." + fs + " " + partition + " -F")
-            else:
-                existingFS = RunGetOutput("sfdisk -q -c " + device + " 1", chk_err=False)[1].rstrip()
-                if existingFS == "7" and fs != "ntfs":
-                    Run("sfdisk -c " + device + " 1 83")
-                    Run("mkfs." + fs + " " + partition)
-            if Run("mount " + partition + " " + mountpoint, chk_err=False):
-                #If mount failed, try to format the partition and mount again
-                Warn("Failed to mount resource disk. Retry mounting.")
-                Run("mkfs." + fs + " " + partition + " -F")
-                if Run("mount " + partition + " " + mountpoint):
-                    Error("ActivateResourceDisk: Failed to mount resource disk (" + partition + ").")
-                    return
-            Log("Resource disk (" + partition + ") is mounted at " + mountpoint + " with fstype " + fs)
-
-        #Create README file under the root of resource disk
-        SetFileContents(os.path.join(mountpoint,README_FILENAME), README_FILECONTENT)
-        DiskActivated = True
-
-        #Create swap space
-        swap = Config.get("ResourceDisk.EnableSwap")
-        if swap == None or swap.lower().startswith("n"):
-            return
-        sizeKB = int(Config.get("ResourceDisk.SwapSizeMB")) * 1024
-        if os.path.isfile(mountpoint + "/swapfile") and os.path.getsize(mountpoint + "/swapfile") != (sizeKB * 1024):
-            os.remove(mountpoint + "/swapfile")
-        if not os.path.isfile(mountpoint + "/swapfile"):
-            Run("dd if=/dev/zero of=" + mountpoint + "/swapfile bs=1024 count=" + str(sizeKB))
-            Run("mkswap " + mountpoint + "/swapfile")
-        Run("chmod 600 " + mountpoint + "/swapfile")
-        if not Run("swapon " + mountpoint + "/swapfile"):
-            Log("Enabled " + str(sizeKB) + " KB of swap at " + mountpoint + "/swapfile")
-        else:
-            Error("ActivateResourceDisk: Failed to activate swap at " + mountpoint + "/swapfile")
-
-    def Install(self):
-        return Install()
-
-    def mediaHasFilesystem(self,dsk):
-        if len(dsk) == 0 :
-            return False
-        if Run("LC_ALL=C fdisk -l " + dsk + " | grep Disk"):
-            return False
-        return True
-
-    def mountDVD(self,dvd,location):
-        return RunGetOutput(self.mount_dvd_cmd + ' ' + dvd + ' ' + location)
-
-    def GetHome(self):
-        return GetHome()
-
-    def getDhcpClientName(self):
-        return self.dhcp_client_name
-
-    def initScsiDiskTimeout(self):
-        """
-        Set the SCSI disk timeout when the agent starts running
-        """
-        self.setScsiDiskTimeout()
-
-    def setScsiDiskTimeout(self):
-        """
-        Iterate all SCSI disks(include hot-add) and set their timeout if their value are different from the OS.RootDeviceScsiTimeout
-        """
-        try:
-            scsiTimeout = Config.get("OS.RootDeviceScsiTimeout")
-            for diskName in [disk for disk in os.listdir("/sys/block") if disk.startswith("sd")]:
-                self.setBlockDeviceTimeout(diskName, scsiTimeout)
-        except:
-            pass
-
-    def setBlockDeviceTimeout(self, device, timeout):
-        """
-        Set SCSI disk timeout by set /sys/block/sd*/device/timeout
-        """
-        if timeout != None and device:
-            filePath = "/sys/block/" + device + "/device/timeout"
-            if(GetFileContents(filePath).splitlines()[0].rstrip() != timeout):
-                SetFileContents(filePath,timeout)
-                Log("SetBlockDeviceTimeout: Update the device " + device + " with timeout " + timeout)
-
-    def waitForSshHostKey(self, path):
-        """
-        Provide a dummy waiting, since by default, ssh host key is created by waagent and the key
-        should already been created.
-        """
-        if(os.path.isfile(path)):
-            return True
-        else:
-            Error("Can't find host key: {0}".format(path))
-            return False
-
-    def isDHCPEnabled(self):
-        return self.dhcp_enabled
-
-    def stopDHCP(self):
-        """
-        Stop the system DHCP client so that the agent can bind on its port. If
-        the distro has set dhcp_enabled to True, it will need to provide an
-        implementation of this method.
-        """
-        raise NotImplementedError('stopDHCP method missing')
-
-    def startDHCP(self):
-        """
-        Start the system DHCP client. If the distro has set dhcp_enabled to
-        True, it will need to provide an implementation of this method.
-        """
-        raise NotImplementedError('startDHCP method missing')
-
-    def translateCustomData(self, data):
-        """
-        Translate the custom data from a Base64 encoding. Default to no-op.
-        """
-        decodeCustomData = Config.get("Provisioning.DecodeCustomData")
-        if decodeCustomData != None and decodeCustomData.lower().startswith("y"):
-            return base64.b64decode(data)
-        return data
-
-    def getConfigurationPath(self):
-        return "/etc/waagent.conf"
-
-    def getProcessorCores(self):
-        return int(RunGetOutput("grep 'processor.*:' /proc/cpuinfo |wc -l")[1])
-
-    def getTotalMemory(self):
-        return int(RunGetOutput("grep MemTotal /proc/meminfo |awk '{print $2}'")[1])/1024
-
-    def getInterfaceNameByMac(self, mac):
-        ret, output = RunGetOutput("ifconfig -a")
-        if ret != 0:
-            raise Exception("Failed to get network interface info")
-        output = output.replace('\n', '')
-        match = re.search(r"(eth\d).*(HWaddr|ether) {0}".format(mac),
-                          output, re.IGNORECASE)
-        if match is None:
-            raise Exception("Failed to get ifname with mac: {0}".format(mac))
-        output = match.group(0)
-        eths = re.findall(r"eth\d", output)
-        if eths is None or len(eths) == 0:
-            raise Exception("Failed to get ifname with mac: {0}".format(mac))
-        return eths[-1]
-
-    def configIpV4(self, ifName, addr, netmask=24):
-        ret, output = RunGetOutput("ifconfig {0} up".format(ifName))
-        if ret != 0:
-            raise Exception("Failed to bring up {0}: {1}".format(ifName,
-                                                                 output))
-        ret, output = RunGetOutput("ifconfig {0} {1}/{2}".format(ifName, addr,
-                                                                 netmask))
-        if ret != 0:
-            raise Exception("Failed to config ipv4 for {0}: {1}".format(ifName,
-                                                                        output))
-    def setDefaultGateway(self, gateway):
-        Run("/sbin/route add default gw" + gateway, chk_err=False)
-
-    def routeAdd(self, net, mask, gateway):
-        Run("/sbin/route add -net " + net + " netmask " + mask + " gw " + gateway,
-            chk_err=False)
+    # def Install(self):
+    #     return Install()
+    #
+    # def mediaHasFilesystem(self,dsk):
+    #     if len(dsk) == 0 :
+    #         return False
+    #     if Run("LC_ALL=C fdisk -l " + dsk + " | grep Disk"):
+    #         return False
+    #     return True
+    #
+    # def mountDVD(self,dvd,location):
+    #     return RunGetOutput(self.mount_dvd_cmd + ' ' + dvd + ' ' + location)
+    #
+    # def GetHome(self):
+    #     return GetHome()
+    #
+    # def getDhcpClientName(self):
+    #     return self.dhcp_client_name
+    #
+    # def initScsiDiskTimeout(self):
+    #     """
+    #     Set the SCSI disk timeout when the agent starts running
+    #     """
+    #     self.setScsiDiskTimeout()
+    #
+    # def setScsiDiskTimeout(self):
+    #     """
+    #     Iterate all SCSI disks(include hot-add) and set their timeout if their value are different from the OS.RootDeviceScsiTimeout
+    #     """
+    #     try:
+    #         scsiTimeout = Config.get("OS.RootDeviceScsiTimeout")
+    #         for diskName in [disk for disk in os.listdir("/sys/block") if disk.startswith("sd")]:
+    #             self.setBlockDeviceTimeout(diskName, scsiTimeout)
+    #     except:
+    #         pass
+    #
+    # def setBlockDeviceTimeout(self, device, timeout):
+    #     """
+    #     Set SCSI disk timeout by set /sys/block/sd*/device/timeout
+    #     """
+    #     if timeout != None and device:
+    #         filePath = "/sys/block/" + device + "/device/timeout"
+    #         if(GetFileContents(filePath).splitlines()[0].rstrip() != timeout):
+    #             SetFileContents(filePath,timeout)
+    #             Log("SetBlockDeviceTimeout: Update the device " + device + " with timeout " + timeout)
+    #
+    # def waitForSshHostKey(self, path):
+    #     """
+    #     Provide a dummy waiting, since by default, ssh host key is created by waagent and the key
+    #     should already been created.
+    #     """
+    #     if(os.path.isfile(path)):
+    #         return True
+    #     else:
+    #         Error("Can't find host key: {0}".format(path))
+    #         return False
+    #
+    # def isDHCPEnabled(self):
+    #     return self.dhcp_enabled
+    #
+    # def stopDHCP(self):
+    #     """
+    #     Stop the system DHCP client so that the agent can bind on its port. If
+    #     the distro has set dhcp_enabled to True, it will need to provide an
+    #     implementation of this method.
+    #     """
+    #     raise NotImplementedError('stopDHCP method missing')
+    #
+    # def startDHCP(self):
+    #     """
+    #     Start the system DHCP client. If the distro has set dhcp_enabled to
+    #     True, it will need to provide an implementation of this method.
+    #     """
+    #     raise NotImplementedError('startDHCP method missing')
+    #
+    # def translateCustomData(self, data):
+    #     """
+    #     Translate the custom data from a Base64 encoding. Default to no-op.
+    #     """
+    #     decodeCustomData = Config.get("Provisioning.DecodeCustomData")
+    #     if decodeCustomData != None and decodeCustomData.lower().startswith("y"):
+    #         return base64.b64decode(data)
+    #     return data
+    #
+    # def getConfigurationPath(self):
+    #     return "/etc/waagent.conf"
+    #
+    # def getProcessorCores(self):
+    #     return int(RunGetOutput("grep 'processor.*:' /proc/cpuinfo |wc -l")[1])
+    #
+    # def getTotalMemory(self):
+    #     return int(RunGetOutput("grep MemTotal /proc/meminfo |awk '{print $2}'")[1])/1024
+    #
+    # def getInterfaceNameByMac(self, mac):
+    #     ret, output = RunGetOutput("ifconfig -a")
+    #     if ret != 0:
+    #         raise Exception("Failed to get network interface info")
+    #     output = output.replace('\n', '')
+    #     match = re.search(r"(eth\d).*(HWaddr|ether) {0}".format(mac),
+    #                       output, re.IGNORECASE)
+    #     if match is None:
+    #         raise Exception("Failed to get ifname with mac: {0}".format(mac))
+    #     output = match.group(0)
+    #     eths = re.findall(r"eth\d", output)
+    #     if eths is None or len(eths) == 0:
+    #         raise Exception("Failed to get ifname with mac: {0}".format(mac))
+    #     return eths[-1]
+    #
+    # def configIpV4(self, ifName, addr, netmask=24):
+    #     ret, output = RunGetOutput("ifconfig {0} up".format(ifName))
+    #     if ret != 0:
+    #         raise Exception("Failed to bring up {0}: {1}".format(ifName,
+    #                                                              output))
+    #     ret, output = RunGetOutput("ifconfig {0} {1}/{2}".format(ifName, addr,
+    #                                                              netmask))
+    #     if ret != 0:
+    #         raise Exception("Failed to config ipv4 for {0}: {1}".format(ifName,
+    #                                                                     output))
+    # def setDefaultGateway(self, gateway):
+    #     Run("/sbin/route add default gw" + gateway, chk_err=False)
+    #
+    # def routeAdd(self, net, mask, gateway):
+    #     Run("/sbin/route add -net " + net + " netmask " + mask + " gw " + gateway,
+    #         chk_err=False)
 
 
 
