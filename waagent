@@ -1741,7 +1741,7 @@ class archDistro(AbstractDistro):
         """
         Create the waagent support files for service installation.
         Called by registerAgentService()
-        """Abstract Virtual Function.  Over-ridden in concrete Distro classes.
+        """
         SetFileContents(self.init_script_file, self.init_file)
         os.chmod(self.init_script_file, 0644)
         return Run(self.service_cmd + ' daemon-reload')
@@ -6559,7 +6559,7 @@ def GetMyDistro(dist_class_name=''):
 def DistInfo(fullname=0):
     if os.path.exists('/etc/arch-release'):
         return "arch","",""
-        
+
     if 'FreeBSD' in platform.system():
         release = re.sub('\-.*\Z', '', str(platform.release()))
         distinfo = ['FreeBSD', release]
