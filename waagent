@@ -1700,7 +1700,7 @@ class archDistro(AbstractDistro):
         Generic Attributes go here.  These are based on 'majority rules'.
         This __init__() may be called or overriden by the child.
         """
-        super(Distro,self).__init__()
+        super(archDistro,self).__init__()
         #self.selinux=None
         self.service_cmd='/usr/bin/systemctl'
         self.ssh_service_restart_option='restart'
