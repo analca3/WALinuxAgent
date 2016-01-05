@@ -1690,7 +1690,7 @@ ExecStart=/usr/sbin/waagent -daemon
 WantedBy=multi-user.target
 """
 
-class Distro(AbstractDistro):
+class archDistro(AbstractDistro):
     """
     Distro is archDistro until Python fixes a bug in platform.linux_distribution() under Archlinux.
     """
@@ -6557,6 +6557,9 @@ def GetMyDistro(dist_class_name=''):
     return globals()[dist_class_name]() # the distro class inside this module.
 
 def DistInfo(fullname=0):
+    if os.path.exists('/etc/arch-release'):
+        return "arch","",""
+        
     if 'FreeBSD' in platform.system():
         release = re.sub('\-.*\Z', '', str(platform.release()))
         distinfo = ['FreeBSD', release]
